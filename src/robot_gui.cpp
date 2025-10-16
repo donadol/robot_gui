@@ -38,11 +38,18 @@ RobotGUI::RobotGUI() {
       nh.serviceClient<std_srvs::Trigger>(distance_service_name_);
   distance_message_ = "";
 
+  // Initialize reset distance service client
+  reset_distance_service_name_ = "/reset_distance";
+  reset_distance_service_client_ =
+      nh.serviceClient<std_srvs::Empty>(reset_distance_service_name_);
+
   ROS_INFO("Robot GUI initialized. Subscribed to /%s topic",
            robot_info_topic_.c_str());
   ROS_INFO("Publishing to %s topic", cmd_vel_topic_.c_str());
   ROS_INFO("Subscribed to %s topic", odom_topic_.c_str());
   ROS_INFO("Service client created for %s", distance_service_name_.c_str());
+  ROS_INFO("Service client created for %s",
+           reset_distance_service_name_.c_str());
 }
 
 void RobotGUI::robotInfoCallback(
@@ -204,7 +211,7 @@ void RobotGUI::run() {
                  odom_data_.pose.pose.position.z);
 
     // Distance Travelled Service Section
-    cvui::window(frame, 20, 640, 280, 90, "Distance Travelled");
+    cvui::window(frame, 20, 640, 380, 90, "Distance Travelled");
 
     // Call button
     if (cvui::button(frame, 30, 660, 100, 40, "Call")) {
@@ -215,6 +222,18 @@ void RobotGUI::run() {
       } else {
         distance_message_ = "Service call failed";
         ROS_ERROR("Failed to call service %s", distance_service_name_.c_str());
+      }
+    }
+
+    // Reset button
+    if (cvui::button(frame, 150, 660, 100, 40, "Reset")) {
+      std_srvs::Empty srv;
+      if (reset_distance_service_client_.call(srv)) {
+        distance_message_ = "0.00";
+        ROS_INFO("Distance reset successfully");
+      } else {
+        ROS_ERROR("Failed to call service %s",
+                  reset_distance_service_name_.c_str());
       }
     }
 

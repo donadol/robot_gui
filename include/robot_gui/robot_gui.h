@@ -7,6 +7,7 @@
 #include <nav_msgs/Odometry.h>
 #include <opencv2/opencv.hpp>
 #include <ros/ros.h>
+#include <std_srvs/Empty.h>
 #include <std_srvs/Trigger.h>
 #include <string>
 
@@ -40,7 +41,9 @@ private:
 
   // Distance service members
   ros::ServiceClient distance_service_client_;
+  ros::ServiceClient reset_distance_service_client_;
   std::string distance_service_name_;
+  std::string reset_distance_service_name_;
   std::string distance_message_;
 
   const std::string WINDOW_NAME = "Robot Control GUI";
