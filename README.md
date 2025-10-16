@@ -112,7 +112,7 @@ source ~/catkin_ws/devel/setup.bash
 
 1. **Start the robot_info node** (provides robot information):
    ```bash
-   rosrun robot_info robot_info_node
+   rosrun robot_info agv_robot_info_node
    ```
 
 2. **Start the distance_tracker_service node** (tracks distance traveled):
@@ -206,7 +206,7 @@ RobotGUI
 **Issue**: Info area shows empty fields.
 
 **Solution**:
-- Check if robot_info_node is running: `rosnode list`
+- Check if agv_robot_info_node is running: `rosnode list`
 - Verify topic is publishing: `rostopic echo /robot_info -n1`
 - Ensure robotinfo_msgs package is built and sourced
 
