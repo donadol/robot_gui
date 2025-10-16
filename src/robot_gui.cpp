@@ -11,8 +11,25 @@ RobotGUI::RobotGUI() {
   robot_info_sub_ = nh.subscribe<robotinfo_msgs::RobotInfo10Fields>(
       robot_info_topic_, 10, &RobotGUI::robotInfoCallback, this);
 
+  // Initialize teleoperation publisher
+  cmd_vel_topic_ = "/cooper_1/cmd_vel";
+  cmd_vel_pub_ = nh.advertise<geometry_msgs::Twist>(cmd_vel_topic_, 10);
+
+  // Initialize velocity step sizes
+  linear_velocity_step_ = 0.05; // m/s per button press
+  angular_velocity_step_ = 0.1; // rad/s per button press
+
+  // Initialize twist message to zero
+  twist_msg_.linear.x = 0.0;
+  twist_msg_.linear.y = 0.0;
+  twist_msg_.linear.z = 0.0;
+  twist_msg_.angular.x = 0.0;
+  twist_msg_.angular.y = 0.0;
+  twist_msg_.angular.z = 0.0;
+
   ROS_INFO("Robot GUI initialized. Subscribed to /%s topic",
            robot_info_topic_.c_str());
+  ROS_INFO("Publishing to %s topic", cmd_vel_topic_.c_str());
 }
 
 void RobotGUI::robotInfoCallback(
@@ -103,6 +120,52 @@ void RobotGUI::run() {
                  0xCECECE);
       yPos += lineSpacing;
     }
+
+    // Teleoperation Buttons Section
+    // Forward button
+    if (cvui::button(frame, 210, 290, 100, 40, "Forward")) {
+      twist_msg_.linear.x += linear_velocity_step_;
+      cmd_vel_pub_.publish(twist_msg_);
+      ROS_DEBUG("Forward pressed: linear.x = %.2f", twist_msg_.linear.x);
+    }
+
+    // Left button
+    if (cvui::button(frame, 80, 340, 100, 40, "Left")) {
+      twist_msg_.angular.z += angular_velocity_step_;
+      cmd_vel_pub_.publish(twist_msg_);
+      ROS_DEBUG("Left pressed: angular.z = %.2f", twist_msg_.angular.z);
+    }
+
+    // Stop button
+    if (cvui::button(frame, 210, 340, 100, 40, "Stop")) {
+      twist_msg_.linear.x = 0.0;
+      twist_msg_.angular.z = 0.0;
+      cmd_vel_pub_.publish(twist_msg_);
+      ROS_DEBUG("Stop pressed");
+    }
+
+    // Right button
+    if (cvui::button(frame, 340, 340, 100, 40, "Right")) {
+      twist_msg_.angular.z -= angular_velocity_step_;
+      cmd_vel_pub_.publish(twist_msg_);
+      ROS_DEBUG("Right pressed: angular.z = %.2f", twist_msg_.angular.z);
+    }
+
+    // Backward button
+    if (cvui::button(frame, 210, 390, 100, 40, "Backward")) {
+      twist_msg_.linear.x -= linear_velocity_step_;
+      cmd_vel_pub_.publish(twist_msg_);
+      ROS_DEBUG("Backward pressed: linear.x = %.2f", twist_msg_.linear.x);
+    }
+
+    // Display current velocities
+    cvui::window(frame, 20, 450, 250, 40, "Linear velocity:");
+    cvui::printf(frame, 30, 475, 0.4, 0xff0000, "%.2f m/sec",
+                 twist_msg_.linear.x);
+
+    cvui::window(frame, 290, 450, 250, 40, "Angular velocity:");
+    cvui::printf(frame, 300, 475, 0.4, 0xff0000, "%.2f rad/sec",
+                 twist_msg_.angular.z);
 
     // Update cvui internal stuff
     cvui::update();
