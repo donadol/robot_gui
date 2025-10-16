@@ -27,9 +27,15 @@ RobotGUI::RobotGUI() {
   twist_msg_.angular.y = 0.0;
   twist_msg_.angular.z = 0.0;
 
+  // Initialize odometry subscriber
+  odom_topic_ = "/cooper_1/odom";
+  odom_sub_ = nh.subscribe<nav_msgs::Odometry>(odom_topic_, 10,
+                                               &RobotGUI::odomCallback, this);
+
   ROS_INFO("Robot GUI initialized. Subscribed to /%s topic",
            robot_info_topic_.c_str());
   ROS_INFO("Publishing to %s topic", cmd_vel_topic_.c_str());
+  ROS_INFO("Subscribed to %s topic", odom_topic_.c_str());
 }
 
 void RobotGUI::robotInfoCallback(
@@ -39,9 +45,17 @@ void RobotGUI::robotInfoCallback(
   ROS_DEBUG("Robot info received");
 }
 
+void RobotGUI::odomCallback(const nav_msgs::Odometry::ConstPtr &msg) {
+  // Store the received odometry data
+  odom_data_ = *msg;
+  ROS_DEBUG("Odometry received: x=%.2f, y=%.2f, z=%.2f",
+            msg->pose.pose.position.x, msg->pose.pose.position.y,
+            msg->pose.pose.position.z);
+}
+
 void RobotGUI::run() {
   // Create the main window frame (width x height)
-  cv::Mat frame = cv::Mat(700, 600, CV_8UC3);
+  cv::Mat frame = cv::Mat(650, 600, CV_8UC3);
 
   // Initialize OpenCV window and tell cvui to use it
   cv::namedWindow(WINDOW_NAME);
@@ -166,6 +180,21 @@ void RobotGUI::run() {
     cvui::window(frame, 290, 450, 250, 40, "Angular velocity:");
     cvui::printf(frame, 300, 475, 0.4, 0xff0000, "%.2f rad/sec",
                  twist_msg_.angular.z);
+
+    // Display robot position (odometry based)
+    cvui::window(frame, 20, 510, 560, 120,
+                 "Estimated robot position based off odometry");
+    cvui::text(frame, 30, 540, "X", 0.5, 0xCECECE);
+    cvui::printf(frame, 90, 560, 0.8, 0xCECECE, "%.0f",
+                 odom_data_.pose.pose.position.x);
+
+    cvui::text(frame, 210, 540, "Y", 0.5, 0xCECECE);
+    cvui::printf(frame, 270, 560, 0.8, 0xCECECE, "%.0f",
+                 odom_data_.pose.pose.position.y);
+
+    cvui::text(frame, 390, 540, "Z", 0.5, 0xCECECE);
+    cvui::printf(frame, 450, 560, 0.8, 0xCECECE, "%.0f",
+                 odom_data_.pose.pose.position.z);
 
     // Update cvui internal stuff
     cvui::update();

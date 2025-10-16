@@ -4,6 +4,7 @@
 #include "robot_gui/cvui.h"
 #include "robotinfo_msgs/RobotInfo10Fields.h"
 #include <geometry_msgs/Twist.h>
+#include <nav_msgs/Odometry.h>
 #include <opencv2/opencv.hpp>
 #include <ros/ros.h>
 #include <string>
@@ -28,6 +29,13 @@ private:
   std::string cmd_vel_topic_;
   float linear_velocity_step_;
   float angular_velocity_step_;
+
+  // Odometry members
+  ros::Subscriber odom_sub_;
+  nav_msgs::Odometry odom_data_;
+  std::string odom_topic_;
+
+  void odomCallback(const nav_msgs::Odometry::ConstPtr &msg);
 
   const std::string WINDOW_NAME = "Robot Control GUI";
 };
