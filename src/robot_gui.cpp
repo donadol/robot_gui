@@ -32,10 +32,17 @@ RobotGUI::RobotGUI() {
   odom_sub_ = nh.subscribe<nav_msgs::Odometry>(odom_topic_, 10,
                                                &RobotGUI::odomCallback, this);
 
+  // Initialize distance service client
+  distance_service_name_ = "/get_distance";
+  distance_service_client_ =
+      nh.serviceClient<std_srvs::Trigger>(distance_service_name_);
+  distance_message_ = "";
+
   ROS_INFO("Robot GUI initialized. Subscribed to /%s topic",
            robot_info_topic_.c_str());
   ROS_INFO("Publishing to %s topic", cmd_vel_topic_.c_str());
   ROS_INFO("Subscribed to %s topic", odom_topic_.c_str());
+  ROS_INFO("Service client created for %s", distance_service_name_.c_str());
 }
 
 void RobotGUI::robotInfoCallback(
@@ -55,7 +62,7 @@ void RobotGUI::odomCallback(const nav_msgs::Odometry::ConstPtr &msg) {
 
 void RobotGUI::run() {
   // Create the main window frame (width x height)
-  cv::Mat frame = cv::Mat(650, 600, CV_8UC3);
+  cv::Mat frame = cv::Mat(750, 600, CV_8UC3);
 
   // Initialize OpenCV window and tell cvui to use it
   cv::namedWindow(WINDOW_NAME);
@@ -195,6 +202,28 @@ void RobotGUI::run() {
     cvui::text(frame, 390, 540, "Z", 0.5, 0xCECECE);
     cvui::printf(frame, 450, 560, 0.8, 0xCECECE, "%.0f",
                  odom_data_.pose.pose.position.z);
+
+    // Distance Travelled Service Section
+    cvui::window(frame, 20, 640, 280, 90, "Distance Travelled");
+
+    // Call button
+    if (cvui::button(frame, 30, 660, 100, 40, "Call")) {
+      std_srvs::Trigger srv;
+      if (distance_service_client_.call(srv)) {
+        distance_message_ = srv.response.message;
+        ROS_INFO("Distance service response: %s", distance_message_.c_str());
+      } else {
+        distance_message_ = "Service call failed";
+        ROS_ERROR("Failed to call service %s", distance_service_name_.c_str());
+      }
+    }
+
+    // Display the distance
+    cvui::text(frame, 30, 710, "Distance in meters:", 0.4, 0xCECECE);
+    if (!distance_message_.empty()) {
+      cvui::printf(frame, 200, 700, 1.0, 0xCECECE, "%s",
+                   distance_message_.c_str());
+    }
 
     // Update cvui internal stuff
     cvui::update();
