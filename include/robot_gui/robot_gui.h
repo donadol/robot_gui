@@ -7,6 +7,7 @@
 #include <nav_msgs/Odometry.h>
 #include <opencv2/opencv.hpp>
 #include <ros/ros.h>
+#include <sensor_msgs/LaserScan.h>
 #include <std_srvs/Empty.h>
 #include <std_srvs/Trigger.h>
 #include <string>
@@ -45,6 +46,14 @@ private:
   std::string distance_service_name_;
   std::string reset_distance_service_name_;
   std::string distance_message_;
+
+  // Laser scan members
+  ros::Subscriber laser_scan_sub_;
+  sensor_msgs::LaserScan laser_scan_data_;
+  std::string laser_scan_topic_;
+
+  void laserScanCallback(const sensor_msgs::LaserScan::ConstPtr &msg);
+  void drawLaserScan(cv::Mat &frame, int x, int y, int width, int height);
 
   const std::string WINDOW_NAME = "Robot Control GUI";
 };

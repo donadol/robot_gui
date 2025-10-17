@@ -14,6 +14,7 @@ find_package(catkin REQUIRED COMPONENTS
   nav_msgs
   robotinfo_msgs
   roscpp
+  sensor_msgs
   std_srvs
 )
 

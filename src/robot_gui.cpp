@@ -43,10 +43,16 @@ RobotGUI::RobotGUI() {
   reset_distance_service_client_ =
       nh.serviceClient<std_srvs::Empty>(reset_distance_service_name_);
 
+  // Initialize laser scan subscriber
+  laser_scan_topic_ = "/cooper_1/scan";
+  laser_scan_sub_ = nh.subscribe<sensor_msgs::LaserScan>(
+      laser_scan_topic_, 10, &RobotGUI::laserScanCallback, this);
+
   ROS_INFO("Robot GUI initialized. Subscribed to /%s topic",
            robot_info_topic_.c_str());
   ROS_INFO("Publishing to %s topic", cmd_vel_topic_.c_str());
   ROS_INFO("Subscribed to %s topic", odom_topic_.c_str());
+  ROS_INFO("Subscribed to %s topic", laser_scan_topic_.c_str());
   ROS_INFO("Service client created for %s", distance_service_name_.c_str());
   ROS_INFO("Service client created for %s",
            reset_distance_service_name_.c_str());
@@ -67,9 +73,90 @@ void RobotGUI::odomCallback(const nav_msgs::Odometry::ConstPtr &msg) {
             msg->pose.pose.position.z);
 }
 
+void RobotGUI::laserScanCallback(const sensor_msgs::LaserScan::ConstPtr &msg) {
+  // Store the received laser scan data
+  laser_scan_data_ = *msg;
+  ROS_DEBUG("Laser scan received: %zu points", msg->ranges.size());
+}
+
+void RobotGUI::drawLaserScan(cv::Mat &frame, int x, int y, int width,
+                             int height) {
+  // Calculate center point and scale
+  int centerX = x + width / 2;
+  int centerY = y + height / 2;
+  float scale = (width / 2) / 10.0; // Scale: 10 meters = half width
+
+  // Create a radar-style display for laser scan data
+  if (laser_scan_data_.ranges.empty()) {
+    // Show "waiting for data" message
+    cvui::text(frame, x + 60, centerY, "Waiting for scan data...", 0.4,
+               0xCECECE);
+    return; // No data yet
+  }
+
+  // Draw background circle (scan range indicator)
+  cv::circle(frame, cv::Point(centerX, centerY), width / 2 - 10,
+             cv::Scalar(60, 60, 60), 1);
+  cv::circle(frame, cv::Point(centerX, centerY), width / 4,
+             cv::Scalar(50, 50, 50), 1);
+
+  // Draw robot at center
+  cv::circle(frame, cv::Point(centerX, centerY), 5, cv::Scalar(0, 255, 255),
+             -1); // Yellow robot
+
+  // Draw forward direction indicator
+  cv::line(frame, cv::Point(centerX, centerY), cv::Point(centerX, centerY - 15),
+           cv::Scalar(0, 255, 255), 2);
+
+  // Process laser scan data
+  for (size_t i = 0; i < laser_scan_data_.ranges.size(); i++) {
+    float range = laser_scan_data_.ranges[i];
+
+    // Skip invalid readings
+    if (range < laser_scan_data_.range_min ||
+        range > laser_scan_data_.range_max || std::isnan(range) ||
+        std::isinf(range)) {
+      continue;
+    }
+
+    // Calculate angle for this reading
+    float angle =
+        laser_scan_data_.angle_min + i * laser_scan_data_.angle_increment;
+
+    // Convert polar to Cartesian coordinates
+    // Note: In ROS, 0 angle is forward (along x-axis), but in display we want
+    // forward to be up So we rotate by -90 degrees (subtract PI/2)
+    float displayAngle = angle - M_PI / 2;
+    float pointX = range * cos(displayAngle) * scale;
+    float pointY = range * sin(displayAngle) * scale;
+
+    // Convert to pixel coordinates
+    int pixelX = centerX + static_cast<int>(pointX);
+    int pixelY = centerY + static_cast<int>(pointY);
+
+    // Color code by distance: Red (close) -> Yellow (medium) -> Green (far)
+    cv::Scalar color;
+    if (range < 1.0) {
+      color = cv::Scalar(0, 0, 255); // Red - danger!
+    } else if (range < 3.0) {
+      color = cv::Scalar(0, 165, 255); // Orange - caution
+    } else {
+      color = cv::Scalar(0, 255, 0); // Green - safe
+    }
+
+    // Draw the point
+    cv::circle(frame, cv::Point(pixelX, pixelY), 2, color, -1);
+  }
+
+  // Draw legend
+  cvui::text(frame, x + 5, y + height - 20, "Red: <1m", 0.35, 0x0000FF);
+  cvui::text(frame, x + 70, y + height - 20, "Orange: 1-3m", 0.35, 0x00A5FF);
+  cvui::text(frame, x + 160, y + height - 20, "Green: >3m", 0.35, 0x00FF00);
+}
+
 void RobotGUI::run() {
   // Create the main window frame (width x height)
-  cv::Mat frame = cv::Mat(750, 600, CV_8UC3);
+  cv::Mat frame = cv::Mat(750, 900, CV_8UC3);
 
   // Initialize OpenCV window and tell cvui to use it
   cv::namedWindow(WINDOW_NAME);
@@ -243,6 +330,10 @@ void RobotGUI::run() {
       cvui::printf(frame, 200, 700, 1.0, 0xCECECE, "%s",
                    distance_message_.c_str());
     }
+
+    // Laser Scan Visualization (Top-Down View)
+    cvui::window(frame, 600, 50, 280, 280, "Laser Scan (Top View)");
+    drawLaserScan(frame, 600, 50, 280, 280);
 
     // Update cvui internal stuff
     cvui::update();
