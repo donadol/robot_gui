@@ -297,11 +297,8 @@ void RobotGUI::run() {
     cvui::printf(frame, 450, 560, 0.8, 0xCECECE, "%.0f",
                  odom_data_.pose.pose.position.z);
 
-    // Distance Travelled Service Section
-    cvui::window(frame, 20, 640, 380, 90, "Distance Travelled");
-
-    // Call button
-    if (cvui::button(frame, 30, 660, 100, 40, "Call")) {
+    // Call button (outside the window, top left)
+    if (cvui::button(frame, 20, 640, 100, 40, "Call")) {
       std_srvs::Trigger srv;
       if (distance_service_client_.call(srv)) {
         distance_message_ = srv.response.message;
@@ -312,8 +309,8 @@ void RobotGUI::run() {
       }
     }
 
-    // Reset button
-    if (cvui::button(frame, 150, 660, 100, 40, "Reset")) {
+    // Reset button (outside the window, below Call button)
+    if (cvui::button(frame, 20, 690, 100, 40, "Reset")) {
       std_srvs::Empty srv;
       if (reset_distance_service_client_.call(srv)) {
         distance_message_ = "0.00";
@@ -324,8 +321,11 @@ void RobotGUI::run() {
       }
     }
 
-    // Display the distance
-    cvui::text(frame, 30, 710, "Distance in meters:", 0.4, 0xCECECE);
+    // Distance Travelled window (contains only the distance display)
+    cvui::window(frame, 140, 640, 260, 90, "Distance Travelled");
+
+    // Display the distance (inside the window)
+    cvui::text(frame, 150, 670, "Distance in meters:", 0.4, 0xCECECE);
     if (!distance_message_.empty()) {
       cvui::printf(frame, 200, 700, 1.0, 0xCECECE, "%s",
                    distance_message_.c_str());
